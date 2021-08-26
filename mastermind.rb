@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require_relative 'string_manipulation'
-require 'pry-byebug'
-
 # CodeMaker class
 class CodeMaker
   attr_reader :secret_code
