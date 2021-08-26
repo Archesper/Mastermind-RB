@@ -28,7 +28,9 @@ class CodeMaker
 
   def self.valid_codes
     ('1111'..'6666').to_a
-                    .reject! { |code| code.include? '0' }
+                    .reject! do |code|
+                      code.split('').any? { |digit| %w[0 7 8 9].include? digit }
+                    end
   end
 end
 
@@ -42,7 +44,7 @@ end
 # HumanCodeMaker class, subclass of CodeMaker
 class HumanCodeMaker < CodeMaker
   def initialize
-    puts 'Please input your secret code'
+    puts 'Please input your secret code:'
     secret_code = gets.chomp
     until CodeMaker.valid_codes.include? secret_code
       puts 'Please choose a valid code: ( Made of 4 digits from 1 to 6 )'
@@ -96,15 +98,16 @@ class Game
   def self.print_clues(clues)
     print 'Clues: '
     clues[:exact].times { print "\e[91m\u25CF\e[0m " }
-    clues[:partial].times { print "\e[37m\u25CB\e[0m " }
+    clues[:partial].times { print "\e[37m\u25CF\e[0m " }
+    puts ''
     puts ''
   end
 
-  def play(breaker)
-    case breaker
-    when 'human'
+  def play(human_role)
+    case human_role
+    when 'B'
       play_with_human_breaker
-    when 'computer'
+    when 'M'
       play_with_computer_breaker
     end
   end
@@ -112,6 +115,8 @@ class Game
   private
 
   def play_with_human_breaker
+    puts 'The computer has picked its code, time to start guessing!'
+    puts ''
     12.times do
       guess = @breaker.guess
       if guess == @maker.secret_code
@@ -127,6 +132,10 @@ class Game
   end
 
   def play_with_computer_breaker
+    puts ''
+    puts 'The computer is coming...'
+    puts ''
+    sleep(0.5)
     guesses_so_far = []
     12.times do |i|
       previous = if i.zero?
