@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require_relative 'string_manipulation'
+require 'pry-byebug'
+
 # CodeMaker class
 class CodeMaker
   attr_reader :secret_code
@@ -20,36 +23,66 @@ class CodeMaker
         partial_match_count += 1
       end
     end
-    [exact_match_count, partial_match_count]
+    { exact: exact_match_count, partial: partial_match_count }
+  end
+
+  def self.valid_codes
+    ('1111'..'6666').to_a
+                    .reject! { |code| code.include? '0' }
   end
 end
 
 # ComputerCodeMaker class, subclass of CodeMaker
 class ComputerCodeMaker < CodeMaker
   def initialize
-    super(('1111'..'6666').to_a
-                          .reject! { |code| code.include? '0' }
-                          .sample)
+    super(CodeMaker.valid_codes.sample)
   end
 end
 
-# CodeBreaker class
-class CodeBreaker
-  def guess; end
+# HumanCodeMaker class, subclass of CodeMaker
+class HumanCodeMaker < CodeMaker
+  def initialize
+    puts 'Please input your secret code'
+    secret_code = gets.chomp
+    until CodeMaker.valid_codes.include? secret_code
+      puts 'Please choose a valid code: ( Made of 4 digits from 1 to 6 )'
+      secret_code = gets.chomp
+    end
+    super(secret_code)
+  end
 end
 
-# HumanCodeBreaker class, subclass of CodeBreaker
+# HumanCodeBreaker class
 class HumanCodeBreaker
   def guess
     puts 'Please enter your code guess:'
     guess = gets.chomp
-    until ('1111'..'6666').to_a
-                          .reject! { |code| code.include? '0' }
-                          .include? guess
+    until CodeMaker.valid_codes.include? guess
       puts 'Please enter a valid guess:'
       guess = gets.chomp
     end
     guess
+  end
+end
+
+# ComputerCodeBreaker class
+class ComputerCodeBreaker
+  attr_accessor :current_possible_codes
+
+  def initialize
+    @current_possible_codes = CodeMaker.valid_codes
+  end
+
+  def guess(previous = nil)
+    return '1122' unless previous
+
+    @current_possible_codes.select! do |code|
+      hypothetical_maker = CodeMaker.new(code)
+      hypothetical_clues = hypothetical_maker.feedback(previous[:guess])
+      hypothetical_clues == previous[:clues]
+    end
+
+    @current_possible_codes[0]
   end
 end
 
@@ -62,17 +95,28 @@ class Game
 
   def self.print_clues(clues)
     print 'Clues: '
-    clues[0].times { print "\e[91m\u25CF\e[0m " }
-    clues[1].times { print "\e[37m\u25CB\e[0m " }
+    clues[:exact].times { print "\e[91m\u25CF\e[0m " }
+    clues[:partial].times { print "\e[37m\u25CB\e[0m " }
     puts ''
   end
 
-  def play
+  def play(breaker)
+    case breaker
+    when 'human'
+      play_with_human_breaker
+    when 'computer'
+      play_with_computer_breaker
+    end
+  end
+
+  private
+
+  def play_with_human_breaker
     12.times do
       guess = @breaker.guess
       if guess == @maker.secret_code
         puts "Congratulations, you've found the secret code!"
-        return
+        return nil
       else
         clues = @maker.feedback(guess)
         Game.print_clues(clues)
@@ -80,5 +124,28 @@ class Game
     end
     puts "You couldn't find the secret code..."
     puts "It was #{@maker.secret_code}!"
+  end
+
+  def play_with_computer_breaker
+    guesses_so_far = []
+    12.times do |i|
+      previous = if i.zero?
+                   nil
+                 else
+                   { guess: guesses_so_far.last,
+                     clues: @maker.feedback(guesses_so_far.last) }
+                 end
+      guess = @breaker.guess(previous)
+      guesses_so_far.push(guess)
+      puts "The computer guessed #{guess}:"
+      clues = @maker.feedback(guess)
+      Game.print_clues(clues)
+      if guess == @maker.secret_code
+        puts "Game over! Code broken successfully in #{i + 1} steps."
+        return nil
+      end
+      sleep(1)
+    end
+    puts "The computer couldn't find your code, you win!"
   end
 end
