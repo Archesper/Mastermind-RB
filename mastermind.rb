@@ -18,6 +18,7 @@ class CodeMaker
         secret_code_chars[index] = nil
       elsif secret_code_chars.include?(char)
         partial_match_count += 1
+        secret_code_chars[secret_code_chars.find_index char] = nil
       end
     end
     { exact: exact_match_count, partial: partial_match_count }
